@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>新北房屋售價報告</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#667085;--line:#e4e7ec;--accent:#e8590c;--accent-soft:#fff1e8;--ok:#2b8a3e;--warn:#b7791f;--warn-bg:#fff6dd}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b1f28;--ink:#e8ebf1;--mute:#98a2b3;--line:#2b313d;--accent:#ff8a4c;--accent-soft:#2e2118;--ok:#69db7c;--warn:#f0c04d;--warn-bg:#2e2712}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.crit{display:flex;flex-wrap:wrap;gap:8px}
+.crit span{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat b{display:block;font-size:26px;line-height:1.2}
+.stat small{color:var(--mute)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
+th{color:var(--mute);font-weight:600;white-space:nowrap;background:var(--card)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.dist td:first-child{font-weight:600}
+.ctrl{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));align-items:end}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+input[type=text],input[type=number],select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{margin:0;color:var(--ink);font-size:14px;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 11px;cursor:pointer;background:var(--bg)}
+.chips label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.chips input{accent-color:var(--accent)}
+.list th{position:sticky;top:0;cursor:pointer;user-select:none;z-index:1}
+.list th.s::after{content:" ▲";font-size:10px}.list th.s.d::after{content:" ▼"}
+.list tr:hover td{background:var(--accent-soft)}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;margin-left:4px;background:var(--warn-bg);color:var(--warn);white-space:nowrap}
+.tag.dup{background:var(--accent-soft);color:var(--accent)}
+.mute{color:var(--mute);font-size:12.5px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.price{font-weight:700;font-size:15px}
+.scroll{overflow-x:auto}
+.note{font-size:13px;color:var(--mute)}.note li{margin:2px 0}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px}
+button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 14px;cursor:pointer;font:inherit}
+button:disabled{opacity:.4;cursor:default}
+@media (max-width:700px){.hide-m{display:none}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>新北房屋售價報告</h1>
+<p class="sub">資料來源：<a href="https://www.rakuya.com.tw/sell/result" target="_blank" rel="noopener">樂屋網 待售房屋</a>　·　擷取時間 {{FETCHED}}　·　共 <span id="total"></span> 筆</p>
+
+<div class="card">
+  <div class="crit">
+    <span>新北市 板橋・新莊・土城・樹林・泰山</span><span>總價 2,300 萬以內</span><span>屋齡 20 年內（含未滿 1 年新屋）</span>
+    <span>有車位（平面式／機械式）</span><span>電梯大廈／華廈</span><span>用途：住家用</span><span>排除一房</span>
+  </div>
+</div>
+
+<div class="card"><div class="stats" id="stats"></div></div>
+
+<div class="card scroll">
+  <table class="dist" id="dist"><thead><tr><th>區域</th><th class="n">物件數</th><th class="n">總價中位數</th><th class="n">單價中位數</th><th class="n">單價區間</th><th class="n hide-m">平均屋齡</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="card">
+  <div class="ctrl">
+    <div style="grid-column:1/-1"><label>區域</label><div class="chips" id="chips"></div></div>
+    <div><label>搜尋（社區／路名／標題）</label><input type="text" id="q" placeholder="例如：超級城市、新北大道"></div>
+    <div><label>總價上限（萬）</label><input type="number" id="pmax" value="2300" min="0" step="100"></div>
+    <div><label>屋齡（年）</label><div style="display:flex;gap:6px"><input type="number" id="amin" value="0" min="0"><input type="number" id="amax" value="20" min="0"></div></div>
+    <div><label>最少房數</label><select id="rmin"><option value="0">不限</option><option value="1">1 房以上</option><option value="2">2 房以上</option><option value="3">3 房以上</option></select></div>
+    <div><label>車位類型</label><select id="ptype"><option value="">不限</option><option value="平面">平面式</option><option value="機械">機械式</option></select></div>
+    <div><label>排序</label><select id="sort"><option value="p:1">總價 低→高</option><option value="p:-1">總價 高→低</option><option value="up:1">單價 低→高</option><option value="a:1">屋齡 新→舊</option><option value="ta:-1">總坪數 大→小</option></select></div>
+    <div><label style="display:flex;gap:6px;align-items:center;color:var(--ink);font-size:14px;margin:0"><input type="checkbox" id="unv"> 含「用途未載明」物件</label></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="mute" id="count" style="margin-bottom:8px"></div>
+  <div class="scroll"><table class="list" id="list"><thead><tr>
+    <th data-k="d">區</th><th data-k="c">社區／標題</th><th class="n" data-k="p">總價</th><th class="n" data-k="up">單價</th><th class="n hide-m" data-k="ta">總建坪</th><th class="n" data-k="a">屋齡</th><th class="hide-m">格局</th><th class="hide-m">樓層</th><th>車位</th><th class="hide-m">捷運</th></tr></thead><tbody></tbody></table></div>
+  <div class="pager"><button id="prev">上一頁</button><span id="pg"></span><button id="next">下一頁</button></div>
+</div>
+
+<div class="card"><b>篩選說明</b>
+<ul class="note">
+<li>條件由樂屋網搜尋端套用：區域、總價 ≤ 2,300 萬、屋齡 20 年以內（含未滿 1 年）、車位（平面式／機械式）、型式住宅、類型電梯大廈／華廈；再以各物件詳情頁確認「有車位」與「用途」。</li>
+<li><b>用途</b>：保留「住家用／集合住宅／國民住宅」；已剔除事務所、辦公、商業、工業、住商、住工等用途。「見使用執照／依權狀謄本／其他」等未載明者預設隱藏，可勾選顯示。屋主填寫的用途未必等同使用執照登載，正式交易請以謄本為準。</li>
+<li><b>新莊</b>：樂屋網無「迴龍、輔大」區塊篩選，以路名近似排除：龍安路、民安西路、中正路、後港一路，以及標題含「迴龍／輔大」者。</li>
+<li><b>泰山</b>：只保留位於塭仔圳重劃區的社區（明日城御風、佳鋐運、文華閱、武泰臻和、坤滿楓江路華廈、晶華城、台北花園廣場、一品特區）及其路名（信華街、莊泰路、楓江路、全興路、泰林路二段），依樂屋網「塭仔圳」關鍵字結果與路名判斷，邊界可能有誤差。</li>
+<li><b>排除項目</b>：一房屋型（1房、開放式、1廳1衛、標題含一房／套房）；板橋的威尼斯社區與超級城市系列；新莊的超級城市系列；土城的金城舞系列、紅布朗花園、四季花園、大同莊園、世界花園與甲山林金城帝寶；樹林北大特區（學勤路、學林路、學成路、學士路及標題含「北大」者）；樹林佳園路（一～三段）、柑園街（一、二段）、大義路、田尾街與桃子腳路的社區。</li>
+<li><b>重複刊登</b>：同一戶常被多位房仲重複刊登，已依「同社區、樓層、總建／主建坪數、格局，且屋齡（差 0.4 年內）、車位、朝向相符」判斷為同一物件並合併，保留最低價的刊登，並標示刊登則數與最高刊價。無法確認的相似物件不合併。</li>
+<li>車位價格多含在總價內；單價為樂屋網顯示之含車位單價。資料為刊登當下快照，價格與上下架隨時變動。</li>
+</ul></div>
+</div>
+
+<script>
+const DATA=/*DATA*/[];
+const PAGE=50, ZONES=["板橋","新莊","土城","樹林","泰山"];
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null?"–":Math.round(n).toLocaleString();
+const med=a=>{if(!a.length)return null;a=[...a].sort((x,y)=>x-y);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const rooms=r=>{const m=(r.l||"").match(/^(\d+)房/);return m?+m[1]:0};
+let sortK="p",sortD=1,page=0,view=[];
+$("total").textContent=DATA.filter(r=>r.ok).length;
+$("chips").innerHTML=ZONES.map(z=>`<label><input type="checkbox" value="${z}" checked>${z}區</label>`).join("");
+const zonesSel=()=>[...document.querySelectorAll("#chips input:checked")].map(i=>i.value);
+
+function filtered(){
+  const zs=new Set(zonesSel()),q=$("q").value.trim().toLowerCase(),pmax=+$("pmax").value||1e9,amin=+$("amin").value||0,amax=+$("amax").value||99,rmin=+$("rmin").value,pt=$("ptype").value,unv=$("unv").checked;
+  return DATA.filter(r=>zs.has(r.d)&&(unv||r.ok)&&r.p<=pmax&&r.a>=amin&&r.a<=amax&&rooms(r)>=rmin&&(!pt||(r.pt||"").includes(pt))&&(!q||(r.c+r.t+r.r).toLowerCase().includes(q)));
+}
+function stats(v){
+  const p=v.map(r=>r.p),u=v.map(r=>r.up).filter(Boolean);
+  $("stats").innerHTML=[["符合物件",v.length+" 筆"],["總價中位數",fmt(med(p))+" 萬"],["單價中位數",u.length?med(u).toFixed(1)+" 萬/坪":"–"],["最低總價",p.length?fmt(Math.min(...p))+" 萬":"–"],["平均屋齡",v.length?(v.reduce((s,r)=>s+r.a,0)/v.length).toFixed(1)+" 年":"–"]]
+   .map(([k,x])=>`<div class="stat"><small>${k}</small><b>${x}</b></div>`).join("");
+  $("dist").tBodies[0].innerHTML=ZONES.map(z=>{const g=v.filter(r=>r.d===z);if(!g.length)return"";const uu=g.map(r=>r.up).filter(Boolean);
+    return`<tr><td>${z}區</td><td class="n">${g.length}</td><td class="n">${fmt(med(g.map(r=>r.p)))} 萬</td><td class="n">${uu.length?med(uu).toFixed(1):"–"} 萬/坪</td><td class="n">${uu.length?Math.min(...uu).toFixed(0)+"–"+Math.max(...uu).toFixed(0):"–"}</td><td class="n hide-m">${(g.reduce((s,r)=>s+r.a,0)/g.length).toFixed(1)} 年</td></tr>`}).join("");
+}
+function render(){
+  view=filtered();
+  view.sort((x,y)=>{const a=x[sortK],b=y[sortK];if(a==null)return 1;if(b==null)return-1;return(typeof a==="string"?a.localeCompare(b,"zh-Hant"):a-b)*sortD});
+  stats(view);
+  const pages=Math.max(1,Math.ceil(view.length/PAGE));page=Math.min(page,pages-1);
+  $("count").textContent=`共 ${view.length} 筆，第 ${page+1}/${pages} 頁`;
+  $("pg").textContent=`${page+1} / ${pages}`;$("prev").disabled=page===0;$("next").disabled=page>=pages-1;
+  $("list").tBodies[0].innerHTML=view.slice(page*PAGE,(page+1)*PAGE).map(r=>{
+    const link="https://www.rakuya.com.tw/sell_item/info?ehid="+r.i;
+    const park=[r.pt,r.ps?r.ps+"坪":""].filter(Boolean).join(" ");
+    return`<tr><td>${r.d}</td><td><a href="${link}" target="_blank" rel="noopener">${esc(r.c||r.t)}</a>${r.n>1?'<span class="tag dup">'+r.n+' 則刊登'+(r.pmax?'，最高 '+fmt(r.pmax)+' 萬':'')+'</span>':""}${r.ok?"":'<span class="tag">用途：'+esc(r.u||"未載明")+"</span>"}<div class="mute">${esc(r.r)}${r.c?" · "+esc(r.t):""}</div></td>
+    <td class="n price">${fmt(r.p)}<span class="mute"> 萬</span></td><td class="n">${r.up??"–"}</td><td class="n hide-m">${r.ta??"–"}</td><td class="n">${r.a}年</td><td class="hide-m">${esc(r.l)}</td><td class="hide-m">${esc(r.f)}</td><td>${esc(park)||"有"}</td><td class="hide-m mute">${esc(r.m)}</td></tr>`}).join("");
+  document.querySelectorAll("#list th[data-k]").forEach(th=>{th.classList.toggle("s",th.dataset.k===sortK);th.classList.toggle("d",th.dataset.k===sortK&&sortD<0)});
+}
+["q","pmax","amin","amax","rmin","ptype","unv"].forEach(id=>$(id).addEventListener("input",()=>{page=0;render()}));
+$("chips").addEventListener("change",()=>{page=0;render()});
+$("sort").addEventListener("change",e=>{[sortK,sortD]=e.target.value.split(":");sortD=+sortD;page=0;render()});
+document.querySelectorAll("#list th[data-k]").forEach(th=>th.addEventListener("click",()=>{const k=th.dataset.k;if(sortK===k)sortD=-sortD;else{sortK=k;sortD=1}page=0;render()}));
+$("prev").onclick=()=>{page--;render();scrollTo(0,$("count").offsetTop-80)};$("next").onclick=()=>{page++;render();scrollTo(0,$("count").offsetTop-80)};
+render();
+</script>
+</body>
+</html>
