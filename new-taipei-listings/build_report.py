@@ -1,8 +1,10 @@
-"""由 listings_raw.json 產生 index.html（資料為自包含，可直接開啟）。"""
+"""由 listings_raw.json 產生 house_report.html（資料為自包含，可直接開啟）。"""
 import json, pathlib, re
 
 D = pathlib.Path(__file__).parent
 raw = json.loads((D / "listings_raw.json").read_text(encoding="utf-8"))
+prev_path = D / "listings_raw_prev.json"
+PREV_IDS = {x["i"] for x in json.loads(prev_path.read_text(encoding="utf-8"))} if prev_path.exists() else None
 OK_USE = {"住家用", "集合住宅", "國民住宅"}
 BAD_USE = re.compile("事務所|辦公|商業|工業|住商|住工|零售|店鋪")
 TS_COMM = {"明日城御風", "佳鋐運", "文華閱", "武泰臻和", "坤滿楓江路華廈", "晶華城", "台北花園廣場", "一品特區"}
@@ -99,6 +101,8 @@ for g in groups.values():
         best = c[0]
         best["n"] = len(c)
         best["pmax"] = c[-1]["p"] if c[-1]["p"] != best["p"] else None
+        # 整戶所有刊登 id 都不在上次快照中，才算「新增」；換房仲重刊不算新增
+        best["isNew"] = 1 if PREV_IDS is not None and all(x["i"] not in PREV_IDS for x in c) else 0
         merged.append(best)
 print("重複合併", len(rows), "->", len(merged))
 rows = merged
@@ -110,7 +114,13 @@ for r in rows:
 import datetime
 # 擷取時間 = 原始資料檔的寫入時間（台灣時間）
 fetched = datetime.datetime.fromtimestamp((D / "listings_raw.json").stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+prev_fetched = (
+    datetime.datetime.fromtimestamp(prev_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+    if prev_path.exists() else ""
+)
 TEMPLATE = (D / "report_template.html").read_text(encoding="utf-8")
-html = TEMPLATE.replace("{{FETCHED}}", fetched).replace("/*DATA*/[]", json.dumps(rows, ensure_ascii=False, separators=(",", ":")))
-(D / "index.html").write_text(html, encoding="utf-8")
-print("rows", len(rows), "verified", sum(r["ok"] for r in rows))
+html = (TEMPLATE.replace("{{FETCHED}}", fetched).replace("{{PREV_FETCHED}}", prev_fetched)
+        .replace("/*DATA*/[]", json.dumps(rows, ensure_ascii=False, separators=(",", ":"))))
+(D / "house_report.html").write_text(html, encoding="utf-8")
+n_new = sum(r.get("isNew", 0) for r in rows if r["ok"] or True)
+print("rows", len(rows), "verified", sum(r["ok"] for r in rows), "new" if PREV_IDS is not None else "(no prev snapshot)", n_new)
