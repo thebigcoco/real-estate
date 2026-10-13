@@ -110,11 +110,11 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const rooms=r=>{const m=(r.l||"").match(/^(\d+)房/);return m?+m[1]:0};
 let sortK="p",sortD=1,page=0,view=[];
 $("total").textContent=DATA.filter(r=>r.ok).length;
-const PREV_FETCHED="{{PREV_FETCHED}}";
+const PREV_FETCHED="{{PREV_FETCHED}}",PREV_LINK="{{PREV_LINK}}";
 const HAS_PREV=DATA.some(r=>"isNew" in r);
 const N_NEW=DATA.filter(r=>r.isNew&&r.ok).length;
 if(HAS_PREV&&PREV_FETCHED){
-  $("prevNote").textContent=`　·　與 ${PREV_FETCHED} 的報告相比，新增 ${N_NEW} 筆`;
+  $("prevNote").innerHTML=`　·　與 ${PREV_FETCHED} 的報告相比，新增 ${N_NEW} 筆`+(PREV_LINK?`（<a href="${PREV_LINK}">查看上一版報告</a>）`:"");
   $("newFilterWrap").style.display="";
 }
 $("chips").innerHTML=ZONES.map(z=>`<label><input type="checkbox" value="${z}" checked>${z}區</label>`).join("");

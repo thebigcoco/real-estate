@@ -1,5 +1,6 @@
 """由 listings_raw.json 產生 house_report.html（資料為自包含，可直接開啟）。"""
-import json, pathlib, re
+import json, pathlib, re, sys
+sys.stdout.reconfigure(encoding="utf-8")
 
 D = pathlib.Path(__file__).parent
 raw = json.loads((D / "listings_raw.json").read_text(encoding="utf-8"))
@@ -119,8 +120,31 @@ prev_fetched = (
     if prev_path.exists() else ""
 )
 TEMPLATE = (D / "report_template.html").read_text(encoding="utf-8")
+
+# 舊報告存檔：不覆蓋前一版，改存到 archive/report_YYYYMMDD_HHMM.html，並在其上加「返回最新版」連結
+out = D / "house_report.html"
+ARCHIVE = D / "archive"
+prev_link = ""
+if out.exists():
+    m = re.search(r"擷取時間 (\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)", out.read_text(encoding="utf-8"))
+    if m and "-".join(m.groups()[:3]) + " " + ":".join(m.groups()[3:]) != fetched:
+        ARCHIVE.mkdir(exist_ok=True)
+        name = "report_%s%s%s_%s%s.html" % m.groups()
+        dest = ARCHIVE / name
+        if not dest.exists():
+            old = out.read_text(encoding="utf-8")
+            banner = '<p class="sub" style="color:var(--accent)">這是歷史版本（擷取於 %s-%s-%s %s:%s），<a href="../index.html">前往最新版報告</a></p>' % m.groups()
+            dest.write_text(old.replace("</h1>", "</h1>" + chr(10) + banner, 1), encoding="utf-8")
+            print("已存檔前一版報告 ->", dest.relative_to(D))
+        prev_link = "archive/" + name
+    elif m:  # 同一份資料重建：沿用既有的上一版存檔連結
+        cands = sorted(ARCHIVE.glob("report_*.html")) if ARCHIVE.exists() else []
+        prev_link = "archive/" + cands[-1].name if cands else ""
+
 html = (TEMPLATE.replace("{{FETCHED}}", fetched).replace("{{PREV_FETCHED}}", prev_fetched)
+        .replace("{{PREV_LINK}}", prev_link)
         .replace("/*DATA*/[]", json.dumps(rows, ensure_ascii=False, separators=(",", ":"))))
-(D / "house_report.html").write_text(html, encoding="utf-8")
-n_new = sum(r.get("isNew", 0) for r in rows if r["ok"] or True)
+out.write_text(html, encoding="utf-8")
+(D / "index.html").write_text(html, encoding="utf-8")  # 與 GitHub Pages 目錄結構一致，讓存檔頁的「最新版」連結也能在本機使用
+n_new = sum(r.get("isNew", 0) for r in rows)
 print("rows", len(rows), "verified", sum(r["ok"] for r in rows), "new" if PREV_IDS is not None else "(no prev snapshot)", n_new)
