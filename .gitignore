@@ -1,3 +1,5 @@
 work/
 *.pyc
 __pycache__/
+new-taipei-listings/listings_raw*.json
+new-taipei-listings/house_report.html
