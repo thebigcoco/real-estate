@@ -145,6 +145,12 @@ if out.exists():
 html = (TEMPLATE.replace("{{FETCHED}}", fetched).replace("{{PREV_FETCHED}}", prev_fetched)
         .replace("{{PREV_LINK}}", prev_link)
         .replace("/*DATA*/[]", json.dumps(rows, ensure_ascii=False, separators=(",", ":"))))
+# 與江翠成交資料報告保持互相連結：模板若遺失連結，產出時補回。
+LINK_CSS = '.links{margin:-8px 0 18px;font-weight:600}.links a{color:var(--accent)}'
+LINK_NAV = '<nav class="links"><a href="https://thebigcoco.github.io/real-estate/">成交資料</a></nav>'
+if LINK_NAV not in html:
+    html = html.replace(".sub{color:var(--mute);margin:0 0 18px}", ".sub{color:var(--mute);margin:0 0 18px}\n" + LINK_CSS, 1)
+    html = re.sub(r'(<p class="sub">資料來源.*?</p>\n)', lambda m: m.group(1) + LINK_NAV + "\n", html, count=1, flags=re.S)
 out.write_text(html, encoding="utf-8")
 (D / "index.html").write_text(html, encoding="utf-8")  # 與 GitHub Pages 目錄結構一致，讓存檔頁的「最新版」連結也能在本機使用
 n_new = sum(r.get("isNew", 0) for r in rows)
