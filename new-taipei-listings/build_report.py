@@ -134,6 +134,7 @@ if out.exists():
         if not dest.exists():
             old = out.read_text(encoding="utf-8")
             banner = '<p class="sub" style="color:var(--accent)">這是歷史版本（擷取於 %s-%s-%s %s:%s），<a href="../index.html">前往最新版報告</a></p>' % m.groups()
+            old = old.replace('PREV_LINK="archive/', 'PREV_LINK="')  # 存檔頁位於 archive/ 內，上一版連結改用同資料夾相對路徑
             dest.write_text(old.replace("</h1>", "</h1>" + chr(10) + banner, 1), encoding="utf-8")
             print("已存檔前一版報告 ->", dest.relative_to(D))
         prev_link = "archive/" + name
