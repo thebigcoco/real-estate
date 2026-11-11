@@ -1,5 +1,5 @@
 """由 listings_raw.json 產生 house_report.html（資料為自包含，可直接開啟）。"""
-import json, pathlib, re, sys
+import json, pathlib, re, shutil, sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 D = pathlib.Path(__file__).parent
@@ -119,6 +119,15 @@ prev_fetched = (
     datetime.datetime.fromtimestamp(prev_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
     if prev_path.exists() else ""
 )
+# 每次擷取的原始資料另存一份帶時間的快照（只留本機），供日後回頭查當初的開價
+SNAP = D / "snapshots"
+SNAP.mkdir(exist_ok=True)
+for src in (D / "listings_raw.json", prev_path):
+    if src.exists():
+        dest = SNAP / ("listings_" + datetime.datetime.fromtimestamp(src.stat().st_mtime).strftime("%Y%m%d_%H%M") + ".json")
+        if not dest.exists():
+            shutil.copy2(src, dest)
+            print("已存快照 ->", dest.relative_to(D))
 TEMPLATE = (D / "report_template.html").read_text(encoding="utf-8")
 
 # 舊報告存檔：不覆蓋前一版，改存到 archive/report_YYYYMMDD_HHMM.html，並在其上加「返回最新版」連結
