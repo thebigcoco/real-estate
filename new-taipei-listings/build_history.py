@@ -66,12 +66,33 @@ for tl in tracks.values():
             "firstSeen": seen_t[0], "firstSeenExact": seen_t[0] != first_version,  # 最早一版已在架上者，實際上架日更早
             "lastSeen": seen_t[-1], "status": "上架中" if seen_t[-1] == latest else "已下架",
             "firstPrice": o[0]["p"], "lastPrice": o[-1]["p"], "priceChanges": changes,
+            "flip": any(x["p"] != o[k - 1]["p"] and any(y["p"] == x["p"] for y in o[:k - 1]) for k, x in enumerate(o) if k > 1),
             "gaps": gaps, "listingIds": sorted({x["i"] for x in o}), "title": r["t"], "obs": o,
         })
 units.sort(key=lambda u: (u["status"], u["district"], u["community"] or u["road"], u["floor"] or ""))
+for i, u in enumerate(units):
+    u["uid"] = i
 
-(D / "listing_history.json").write_text(
-    json.dumps({"versions": [w for w, _ in versions], "units": units}, ensure_ascii=False, indent=1), encoding="utf-8")
+hist = {"versions": [w for w, _ in versions], "units": units}
+(D / "listing_history.json").write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+# 網頁版：資料內嵌的單一 HTML，雙擊即可開啟（同樣只留本機）
+(D / "listing_history.html").write_text(
+    (D / "history_template.html").read_text(encoding="utf-8").replace(
+        "/*DATA*/null", json.dumps(hist, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")), encoding="utf-8")
+# 最新版報告（index.html）每一列補上履歷摘要 h：首次開價 f、調價次數 n、價格來回 fl，報告才能顯示開價變化與「履歷」連結。
+# 只改 index.html；house_report.html 維持不含履歷，下次被存檔的歷史版本也就不帶這個欄位。
+cur = {i: u for u in units if u["status"] == "上架中" for i in u["listingIds"]}
+idx = D / "index.html"
+page = idx.read_text(encoding="utf-8")
+m = re.search(r"((?:const|var|let) DATA\s*=\s*)(\[.*?\])(;)", page, re.S)
+rows = json.loads(m.group(2))
+for r in rows:
+    u = cur.get(r["i"])
+    r.pop("h", None)
+    if u:
+        r["h"] = {"f": u["firstPrice"], "n": len(u["priceChanges"]), "fl": int(u["flip"])}
+idx.write_text(page[:m.start(2)] + json.dumps(rows, ensure_ascii=False, separators=(",", ":")) + page[m.end(2):], encoding="utf-8")
+print("報告 index.html 已補履歷摘要", sum("h" in r for r in rows), "/", len(rows), "列")
 with (D / "listing_history.csv").open("w", encoding="utf-8-sig", newline="") as fh:  # utf-8-sig 讓 Excel 直接開啟不亂碼
     w = csv.writer(fh)
     w.writerow(["區", "社區", "路段", "樓層", "建坪", "主建物", "格局", "屋齡", "首次出現", "首次出現為確切日期",

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>物件履歷</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#667085;--line:#e4e7ec;--accent:#e8590c;--accent-soft:#fff1e8;--ok:#2b8a3e;--ok-bg:#e6f4ea;--warn:#b7791f;--warn-bg:#fff6dd}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b1f28;--ink:#e8ebf1;--mute:#98a2b3;--line:#2b313d;--accent:#ff8a4c;--accent-soft:#2e2118;--ok:#69db7c;--ok-bg:#16301c;--warn:#f0c04d;--warn-bg:#2e2712}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.stat b{display:block;font-size:26px;line-height:1.2}
+.stat small{color:var(--mute)}
+.ctrl{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));align-items:end}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+input[type=text],input[type=number],select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{margin:0;color:var(--ink);font-size:14px;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 11px;cursor:pointer;background:var(--bg)}
+.chips label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.chips input{accent-color:var(--accent)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
+th{color:var(--mute);font-weight:600;white-space:nowrap;background:var(--card)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.list th{position:sticky;top:0;cursor:pointer;user-select:none;z-index:1}
+.list th.s::after{content:" ▲";font-size:10px}.list th.s.d::after{content:" ▼"}
+.list tr.u{cursor:pointer}.list tr.u:hover td{background:var(--accent-soft)}
+.list tr.u.open td{background:var(--accent-soft)}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;margin-left:4px;background:var(--warn-bg);color:var(--warn);white-space:nowrap}
+.tag.on{background:var(--ok-bg);color:var(--ok)}
+.down{color:var(--ok);font-weight:600}.up{color:var(--accent);font-weight:600}
+.mute{color:var(--mute);font-size:12.5px}
+.price{font-weight:700}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.det td{background:var(--bg);padding:14px 18px}
+.det .grid{display:grid;grid-template-columns:minmax(280px,1.2fr) minmax(260px,1fr);gap:18px}
+@media (max-width:760px){.det .grid{grid-template-columns:1fr}}
+.det h4{margin:0 0 6px;font-size:14px}
+.det table th,.det table td{padding:4px 8px;font-size:13px}
+svg.ch{width:100%;height:auto;display:block}
+svg.ch text{fill:var(--mute);font-size:11px}
+svg.ch .ax{stroke:var(--line)}
+svg.ch .ln{fill:none;stroke:var(--accent);stroke-width:2}
+svg.ch .pt{fill:var(--accent)}
+svg.ch .end{stroke:var(--mute);stroke-width:2}
+.note{font-size:13px;color:var(--mute)}.note li{margin:2px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="mute" style="margin:0 0 6px"><a href="index.html">← 回到新北房屋售價報告</a></p>
+<h1>物件履歷</h1>
+<p class="sub" id="sub"></p>
+<div class="card stats" id="stats"></div>
+<div class="card">
+ <div class="ctrl">
+  <div><label>區</label><div class="chips" id="dist"></div></div>
+  <div><label>社區／路段</label><input type="text" id="q" placeholder="例如：江翠、柏克萊"></div>
+  <div><label>狀態</label><select id="st"><option value="">全部</option><option>上架中</option><option>已下架</option></select></div>
+  <div><label>最近開價（萬）</label><div style="display:flex;gap:6px"><input type="number" id="pmin" placeholder="最低"><input type="number" id="pmax" placeholder="最高"></div></div>
+  <div class="chips">
+   <label><input type="checkbox" id="chg">有調價</label>
+   <label><input type="checkbox" id="exact">首次出現為確切日期</label>
+  </div>
+ </div>
+</div>
+<div class="card">
+ <div class="mute" id="count" style="margin-bottom:8px"></div>
+ <div class="scroll"><table class="list" id="list"><thead></thead><tbody></tbody></table></div>
+</div>
+<div class="card">
+ <ul class="note">
+  <li>點一列可展開開價走勢與每一版的紀錄。</li>
+  <li>標「來回」的物件，價格回到先前出現過的數字，多半是不同房仲刊登價不同、輪流成為最低價，要看每一版紀錄再判斷。</li>
+  <li>「開價」取同一戶多筆刊登中最低的價格，「最高」為同一戶其他刊登的最高價。</li>
+  <li>首次出現晚於最早一版（<span id="first"></span>）才是確切日期；最早一版已在架的物件，實際上架日更早，天數只能從那一版起算。</li>
+  <li>「已下架」指最新一版看不到，不一定是成交；也可能撤售、換仲介重刊（換刊登編號仍視為同一戶）或剛好不符篩選條件。</li>
+  <li>資料來自歷次已公開的報告，每次更新報告後由 build_history.py 重新產生。</li>
+ </ul>
+</div>
+</div>
+<script>
+const H=/*DATA*/null;
+const U=H.units,V=H.versions,$=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const d10=t=>t.slice(0,10),ms=t=>Date.parse(t.replace(" ","T"));
+const name=u=>u.community||u.road||"";
+U.forEach(u=>{u.name=name(u);u.delta=u.lastPrice-u.firstPrice;u.pct=u.firstPrice?u.delta/u.firstPrice*100:0;u.nchg=u.priceChanges.length;
+ u.days=Math.round((ms(u.lastSeen)-ms(u.firstSeen))/864e5)});
+$("first").textContent=d10(V[0]);
+$("sub").textContent=`資料來自 ${V.length} 版報告：${d10(V[0])} ～ ${d10(V[V.length-1])}`;
+const act=U.filter(u=>u.status==="上架中").length,dn=U.filter(u=>u.delta<0).length,upn=U.filter(u=>u.delta>0).length;
+$("stats").innerHTML=[[U.length,"物件（戶）"],[act,"上架中"],[U.length-act,"已下架"],[U.filter(u=>u.nchg).length,"有調價"],[dn,"目前比首次開價低"],[upn,"目前比首次開價高"]]
+ .map(([n,l])=>`<div class="stat"><b>${n}</b><small>${l}</small></div>`).join("");
+const dists=[...new Set(U.map(u=>u.district))];
+$("dist").innerHTML=dists.map(d=>`<label><input type="checkbox" value="${d}" checked>${d}</label>`).join("");
+const cols=[["district","區"],["name","社區／路段"],["floor","樓層"],["totalArea","建坪",1],["layout","格局"],["age","屋齡",1],
+ ["firstSeen","首次出現"],["lastSeen","最後出現"],["status","狀態"],["firstPrice","首次開價",1],["lastPrice","最近開價",1],["delta","變動",1],["nchg","調價",1]];
+$("list").tHead.innerHTML="<tr>"+cols.map(c=>`<th data-k="${c[0]}"${c[2]?' class="n"':""}>${c[1]}</th>`).join("")+"</tr>";
+let sk="name",sd=1,openKey=null;
+function cmp(a,b){let x=a[sk],y=b[sk];if(x==null)x="";if(y==null)y="";return (x<y?-1:x>y?1:0)*sd||(a.name<b.name?-1:1)}
+function rows(){
+ const ds=[...$("dist").querySelectorAll("input:checked")].map(i=>i.value),q=$("q").value.trim(),st=$("st").value,
+  lo=parseFloat($("pmin").value),hi=parseFloat($("pmax").value),chg=$("chg").checked,ex=$("exact").checked;
+ return U.filter(u=>ds.includes(u.district)&&(!q||(u.name+(u.road||"")+(u.title||"")).includes(q))&&(!st||u.status===st)
+  &&(isNaN(lo)||u.lastPrice>=lo)&&(isNaN(hi)||u.lastPrice<=hi)&&(!chg||u.nchg)&&(!ex||u.firstSeenExact)).sort(cmp);
+}
+function chart(u){
+ const W=560,Hh=170,L=46,R=14,T=14,B=26,o=u.obs,t0=ms(V[0]),t1=ms(V[V.length-1]),span=Math.max(t1-t0,1);
+ const ps=o.map(x=>x.p),lo=Math.min(...ps),hi=Math.max(...ps),pad=Math.max((hi-lo)*.25,10),a=lo-pad,b=hi+pad;
+ const X=t=>L+(ms(t)-t0)/span*(W-L-R),Y=p=>T+(1-(p-a)/(b-a))*(Hh-T-B);
+ let g=`<line class="ax" x1="${L}" x2="${W-R}" y1="${Hh-B}" y2="${Hh-B}"/>`;
+ [lo,hi].filter((v,i,s)=>s.indexOf(v)===i).forEach(p=>g+=`<line class="ax" x1="${L}" x2="${W-R}" y1="${Y(p)}" y2="${Y(p)}" stroke-dasharray="3 3"/><text x="${L-6}" y="${Y(p)+4}" text-anchor="end">${p}</text>`);
+ V.forEach(v=>g+=`<line class="ax" x1="${X(v)}" x2="${X(v)}" y1="${Hh-B}" y2="${Hh-B+4}"/>`);
+ g+=`<text x="${L}" y="${Hh-8}">${d10(V[0]).slice(5)}</text><text x="${W-R}" y="${Hh-8}" text-anchor="end">${d10(V[V.length-1]).slice(5)}</text>`;
+ let d="";o.forEach((x,i)=>{d+=(i?`H${X(x.t)}V${Y(x.p)}`:`M${X(x.t)} ${Y(x.p)}`)});
+ const lx=X(o[o.length-1].t);
+ if(u.status==="上架中")d+=`H${W-R}`;
+ g+=`<path class="ln" d="${d}"/>`;
+ o.forEach(x=>g+=`<circle class="pt" cx="${X(x.t)}" cy="${Y(x.p)}" r="3"><title>${d10(x.t)}　${x.p} 萬</title></circle>`);
+ if(u.status==="已下架")g+=`<path class="end" d="M${lx-4} ${Y(o[o.length-1].p)-4}l8 8m0-8l-8 8"/>`;
+ return `<svg class="ch" viewBox="0 0 ${W} ${Hh}">${g}</svg>`;
+}
+function detail(u){
+ const last=u.obs[u.obs.length-1];
+ const ob=u.obs.slice().reverse().map(x=>`<tr><td>${x.t}</td><td class="n price">${x.p}</td><td class="n">${x.pmax==null?"－":x.pmax}</td><td class="n">${x.n}</td></tr>`).join("");
+ const ch=u.priceChanges.length?u.priceChanges.map(c=>`<li>${d10(c.t)}　${c.from} → ${c.to} 萬（<span class="${c.to<c.from?"down":"up"}">${c.to<c.from?"":"+"}${c.to-c.from}</span>）</li>`).join(""):"<li class='mute'>無調價紀錄</li>";
+ return `<div class="grid"><div><h4>開價走勢（萬）</h4>${chart(u)}
+  <div class="mute">${esc(u.title)}</div>
+  <div class="mute"><a href="https://www.rakuya.com.tw/sell_item/info?ehid=${esc(last.i)}" target="_blank" rel="noopener">最後一筆刊登（樂屋網）</a>${u.status==="已下架"?"　已下架的連結可能已失效":""}</div></div>
+  <div><h4>調價紀錄</h4>${u.flip?`<div class="mute" style="margin-bottom:6px">價格在幾個數字之間來回，可能是同一戶不同房仲的刊登價不同，輪流成為最低價，不一定是真的調價。</div>`:""}<ul style="margin:0 0 10px;padding-left:18px;font-size:13px">${ch}</ul>
+  ${u.gaps.length?`<div class="mute">中斷後再出現：${u.gaps.map(d10).join("、")} 這幾版看不到</div>`:""}
+  <h4 style="margin-top:10px">每一版紀錄</h4><table><thead><tr><th>版本</th><th class="n">開價</th><th class="n">最高</th><th class="n">刊登數</th></tr></thead><tbody>${ob}</tbody></table></div></div>`;
+}
+function render(){
+ const r=rows();$("count").textContent=`共 ${r.length} 戶`;
+ $("list").tBodies[0].innerHTML=r.map((u,i)=>{
+  const k=String(u.uid),open=k===openKey;
+  const dl=u.delta===0?"－":`<span class="${u.delta<0?"down":"up"}">${u.delta>0?"+":""}${u.delta}（${u.pct>0?"+":""}${u.pct.toFixed(1)}%）</span>`;
+  return `<tr class="u${open?" open":""}" data-k="${esc(k)}"><td>${esc(u.district)}</td><td>${esc(u.name)}${u.community?"":'<span class="tag">無社區</span>'}</td><td>${esc(u.floor||"－")}</td><td class="n">${u.totalArea??"－"}</td><td>${esc(u.layout)}</td><td class="n">${u.age}</td>
+  <td>${d10(u.firstSeen)}${u.firstSeenExact?"":'<span class="tag" title="最早一版已在架，實際上架日更早">≤</span>'}</td><td>${d10(u.lastSeen)}</td><td>${u.status==="上架中"?'<span class="tag on">上架中</span>':"已下架"}</td>
+  <td class="n">${u.firstPrice}</td><td class="n price">${u.lastPrice}</td><td class="n">${dl}</td><td class="n">${u.nchg||"－"}${u.flip?'<span class="tag" title="價格回到先前出現過的數字，可能是不同房仲的刊登輪流成為最低價，不一定是真的調價">來回</span>':""}</td></tr>`+(open?`<tr class="det"><td colspan="${cols.length}">${detail(u)}</td></tr>`:"");
+ }).join("");
+ [...$("list").tHead.rows[0].cells].forEach(th=>{th.className=(th.dataset.k===sk?"s"+(sd<0?" d":""):"")+(th.className.includes("n")?" n":"")});
+}
+$("list").tHead.onclick=e=>{const k=e.target.dataset.k;if(!k)return;sd=sk===k?-sd:1;sk=k;render()};
+$("list").tBodies[0].onclick=e=>{if(e.target.closest("a"))return;const tr=e.target.closest("tr.u");if(!tr)return;openKey=openKey===tr.dataset.k?null:tr.dataset.k;render()};
+document.querySelectorAll(".ctrl input,.ctrl select").forEach(i=>i.oninput=()=>{openKey=null;render()});
+render();
+// 從報告點「履歷」連結進來：?id=刊登編號 → 篩到該社區並展開那一戶
+const qid=new URLSearchParams(location.search).get("id")||location.hash.slice(1);
+const hit=qid&&U.find(u=>u.listingIds.includes(qid));
+if(hit){$("q").value=hit.name;openKey=String(hit.uid);render();const d=document.querySelector("tr.det");if(d)d.scrollIntoView({block:"center"})}
+</script>
+</body>
+</html>

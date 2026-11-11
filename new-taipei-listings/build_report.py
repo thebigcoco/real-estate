@@ -157,7 +157,7 @@ html = (TEMPLATE.replace("{{FETCHED}}", fetched).replace("{{PREV_FETCHED}}", pre
 # 與江翠成交資料報告保持互相連結：模板若遺失連結，產出時補回。
 LINK_CSS = '.links{margin:-8px 0 18px;font-weight:600}.links a{color:var(--accent)}'
 LINK_NAV = '<nav class="links"><a href="https://thebigcoco.github.io/real-estate/">成交資料</a></nav>'
-if LINK_NAV not in html:
+if '<a href="https://thebigcoco.github.io/real-estate/">成交資料</a>' not in html:
     html = html.replace(".sub{color:var(--mute);margin:0 0 18px}", ".sub{color:var(--mute);margin:0 0 18px}\n" + LINK_CSS, 1)
     html = re.sub(r'(<p class="sub">資料來源.*?</p>\n)', lambda m: m.group(1) + LINK_NAV + "\n", html, count=1, flags=re.S)
 out.write_text(html, encoding="utf-8")
